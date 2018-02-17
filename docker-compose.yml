@@ -1,0 +1,94 @@
+version: '3'
+
+services:
+    nginx:
+        image: hanzel/nginx-html
+        ports:
+            - "8000:80"
+        networks:
+            - defaultNetwork
+        deploy:
+            replicas: 5
+    node:
+        build: ./nodejs
+        image: nodejs_container
+        networks:
+            - defaultNetwork
+    python:
+        build: ./python
+        image: python_container
+        networks:
+            - defaultNetwork
+    dotnet:
+        build: ./dotnet
+        image: dotnet_container
+        networks:
+            - defaultNetwork            
+    logspout:
+        image: bekt/logspout-logstash
+        restart: on-failure
+        networks:
+            - defaultNetwork
+        links:
+            - logstash
+        environment:
+            ROUTE_URIS: 'logstash://logstash:5000'
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+        depends_on:
+            - logstash
+        deploy:
+            mode: global
+            restart_policy:
+                condition: on-failure
+                delay: 30s      
+
+    elasticsearch:
+        image: elasticsearch:latest
+        volumes:
+            - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+        ports:
+            - "9200:9200"
+            - "9300:9300"
+        environment:
+            ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+        networks:
+            - defaultNetwork
+  
+    logstash:
+        image: docker.elastic.co/logstash/logstash-oss:6.0.0
+        volumes:
+            - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+            - ./logstash/pipeline:/usr/share/logstash/pipeline
+        ports:
+            - 5000:5000
+        environment:
+            LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+        networks:
+            - defaultNetwork
+        depends_on:
+            - elasticsearch
+        deploy:
+            replicas: 1
+            
+    kibana:
+        image: kibana:latest
+        volumes:
+            - ./kibana/config/:/usr/share/kibana/config
+        networks:
+            - defaultNetwork
+        ports:
+            - '5601:5601'
+        depends_on:
+            - elasticsearch
+        restart: on-failure
+        environment:
+            ELASTICSEARCH_URL: 'http://elasticsearch:9200'
+            XPACK_SECURITY_ENABLED: 'false'
+            XPACK_MONITORING_ENABLED: 'false'
+        deploy:
+            replicas: 1
+
+networks:
+  defaultNetwork:
+    driver: bridge

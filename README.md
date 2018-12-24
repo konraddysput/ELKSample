@@ -3,7 +3,7 @@ Konrad Dysput
 
 ## What is here?
 
-Here is example how to use elk stack with simple application write in nodejs, python and dotnet core to log information from containers to elasticsearch.
+Here is example how to use elk stack with simple nodejs, python and dotnet core applications to log information from containers to elasticsearch.
 
 ## Why should I use it?
 
